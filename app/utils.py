@@ -1,8 +1,10 @@
 # app/utils.py
 
 import fitz  # PyMuPDF
-
-# app/utils.py (add this)
+from sentence_transformers import SentenceTransformer
+import faiss
+import numpy as np
+from transformers import pipeline
 
 def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> list:
     """
@@ -35,3 +37,60 @@ def extract_text_from_file(file_path: str) -> str:
     
     else:
         raise ValueError("Unsupported file type for text extraction.")
+
+# Load model once (global)
+embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+
+
+def generate_embeddings(chunks: list) -> list:
+    """
+    Generates embeddings for a list of text chunks.
+    """
+    embeddings = embedding_model.encode(chunks)
+    return embeddings
+
+
+def create_faiss_index(embeddings: list) -> faiss.IndexFlatL2:
+    """
+    Creates a FAISS index and adds the provided embeddings.
+    """
+    dimension = embeddings[0].shape[0]  # length of embedding vector
+    index = faiss.IndexFlatL2(dimension)  # L2 = Euclidean distance
+
+    np_embeddings = np.array(embeddings).astype('float32')  # faiss needs float32
+    index.add(np_embeddings)
+    
+    return index
+
+
+def save_faiss_index(index: faiss.IndexFlatL2, path: str):
+    """
+    Saves FAISS index to disk.
+    """
+    faiss.write_index(index, path)
+
+
+def load_faiss_index(path: str) -> faiss.IndexFlatL2:
+    """
+    Loads FAISS index from disk.
+    """
+    return faiss.read_index(path)
+
+
+# Load model once (global)
+qa_pipeline = pipeline(
+    "text2text-generation",
+    model="google/flan-t5-small",
+    tokenizer="google/flan-t5-small"
+)
+
+def generate_answer(context_chunks: list, question: str) -> str:
+    """
+    Given context and question, generate an answer using a small LLM.
+    """
+    context = "\n".join(context_chunks)
+    prompt = f"Answer the question based on the context:\nContext: {context}\nQuestion: {question}"
+    
+    output = qa_pipeline(prompt, max_length=200)
+    answer = output[0]['generated_text']
+    return answer
