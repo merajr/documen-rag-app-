@@ -21,6 +21,14 @@ It allows you to upload documents, generate semantic embeddings, perform vector 
 
 ---
 
+## Application Screenshots
+
+![App Screenshot - File Uploading](images/SS1.jpg)
+
+![App Screenshot - Querying from the file](images/SS2.jpg)
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |
